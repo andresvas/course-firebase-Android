@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/android-firestore-platzi-crypto-trade-1.configuracion-firebase.iml" filepath="$PROJECT_DIR$/.idea/modules/android-firestore-platzi-crypto-trade-1.configuracion-firebase.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/app/android-firestore-platzi-crypto-trade-1.configuracion-firebase.app.iml" filepath="$PROJECT_DIR$/.idea/modules/app/android-firestore-platzi-crypto-trade-1.configuracion-firebase.app.iml" />
+    </modules>
+  </component>
+</project>
