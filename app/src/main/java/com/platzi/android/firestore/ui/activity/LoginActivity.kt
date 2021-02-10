@@ -16,6 +16,7 @@ import com.platzi.android.firestore.network.USER_COLLECTION_NAME
 import kotlinx.android.synthetic.main.activity_login.*
 import kotlinx.android.synthetic.main.activity_trader.*
 import java.lang.Exception
+import java.net.URISyntaxException
 
 /**
  * @author Santiago Carrillo
@@ -50,9 +51,26 @@ class LoginActivity : AppCompatActivity() {
         auth.signInAnonymously().addOnCompleteListener { task ->
             if (task.isSuccessful) {
                 val userName = username.text.toString();
-                val user = User()
-                user.username = userName
-                saveUserAndStartMainActivity(user, view)
+
+
+                firestoreService.findUserById(userName, object : Callback<User>{
+                    override fun onSuccess(result: User?) {
+                        if (result == null) {
+                            val user = User()
+                            user.username = userName
+                            saveUserAndStartMainActivity(user, view)
+                        } else {
+                            startMainActivity(userName)
+                        }
+                    }
+
+                    override fun onFailed(exception: Exception) {
+                       showErrorMessage(view)
+                    }
+
+                })
+
+
 
             } else {
                 showErrorMessage(view)
