@@ -1,8 +1,6 @@
 package com.platzi.android.firestore.network
 
-import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.FirebaseFirestoreException
 import com.platzi.android.firestore.model.Crypto
 import com.platzi.android.firestore.model.User
 
@@ -20,8 +18,9 @@ class FirestroeService(val firebaseFirestore: FirebaseFirestore) {
     }
 
     fun updateUser(user:User, callback: Callback<User>?) {
-        firebaseFirestore.collection(USER_COLLECTION_NAME).document(user.username).update("cryptosList", user.cryptoList).addOnSuccessListener {
-            callback?.onSuccess(user)
+        firebaseFirestore.collection(USER_COLLECTION_NAME).document(user.username).update("cryptosList", user.cryptosList).addOnSuccessListener {
+            if (callback != null)
+                callback.onSuccess(user)
         }.addOnFailureListener { it ->
             callback?.onFailed(it)
         }
@@ -63,11 +62,30 @@ class FirestroeService(val firebaseFirestore: FirebaseFirestore) {
     }
 
 
-    fun listenForUpdate(cryptos: List<Crypto>,  listeber: RealTimeDataListener<Crypto>) {
+    fun listenForUpdates(cryptos: List<Crypto>,  listeber: RealTimeDataListener<Crypto>) {
         val cryptoReference = firebaseFirestore.collection(CRYPTO_COLLECTION_NAME)
         for (crypto in cryptos) {
-            cryptoReference.document(crypto.getDocumentId()).addSnapshotListener { documentSnapshot: DocumentSnapshot?, firebaseFirestoreException: FirebaseFirestoreException? ->
+            cryptoReference.document(crypto.getDocumentId()).addSnapshotListener { snapshot, exception ->
+                if (exception != null) {
+                    listeber.onError(exception)
+                }
+                if (snapshot != null && snapshot.exists()) {
+                    listeber.onDataChange(snapshot.toObject(Crypto::class.java)!!)
+                }
 
+            }
+        }
+    }
+
+    fun listenForUpdate(user: User, listeber: RealTimeDataListener<User>) {
+        val  userReference = firebaseFirestore.collection(USER_COLLECTION_NAME)
+        userReference.document(user.username).addSnapshotListener { snapshot, exception ->
+            if (exception != null) {
+                listeber.onError(exception)
+            }
+
+            if (snapshot != null && snapshot.exists()) {
+                listeber.onDataChange(snapshot.toObject(User::class.java)!!)
             }
         }
     }

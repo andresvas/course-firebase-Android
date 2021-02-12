@@ -16,6 +16,7 @@ import com.platzi.android.firestore.model.Crypto
 import com.platzi.android.firestore.model.User
 import com.platzi.android.firestore.network.Callback
 import com.platzi.android.firestore.network.FirestroeService
+import com.platzi.android.firestore.network.RealTimeDataListener
 import com.squareup.picasso.Picasso
 import kotlinx.android.synthetic.main.activity_trader.*
 import java.lang.Exception
@@ -50,8 +51,17 @@ class TraderActivity : AppCompatActivity(), CryptosAdapterListener {
         fab.setOnClickListener { view ->
             Snackbar.make(view, getString(R.string.generating_new_cryptos), Snackbar.LENGTH_SHORT)
                 .setAction("Info", null).show()
+            generateCryptoCurrenciesRandom()
         }
 
+    }
+
+    private fun generateCryptoCurrenciesRandom() {
+        for (crypto in cryptosAdapter.cryptoList) {
+            val amount = (1..10).random()
+            crypto.available += amount
+            firestroeService.updateCrypto(crypto)
+        }
     }
 
     private fun loadCryptos() {
@@ -60,7 +70,7 @@ class TraderActivity : AppCompatActivity(), CryptosAdapterListener {
                 firestroeService.findUserById(userName!!, object : Callback<User> {
                     override fun onSuccess(result: User?) {
                         user = result
-                        if (user!!.cryptoList == null) {
+                        if (user!!.cryptosList == null) {
                             val userCryptoList = mutableListOf<Crypto>()
 
                             for (crypto in cryptoList!!) {
@@ -70,11 +80,13 @@ class TraderActivity : AppCompatActivity(), CryptosAdapterListener {
                                 cryptoUser.imageUrl = crypto.imageUrl
                                 userCryptoList.add(cryptoUser)
                             }
-                            user!!.cryptoList = userCryptoList
+                            user!!.cryptosList = userCryptoList
                             firestroeService.updateUser(user!!, null)
                         }
 
                         loadUserCrypto()
+                        addRealTimeDatabeseListeners(user!!, cryptoList!!)
+
                     }
 
                     override fun onFailed(exception: Exception) {
@@ -97,11 +109,45 @@ class TraderActivity : AppCompatActivity(), CryptosAdapterListener {
         })
     }
 
+    private fun addRealTimeDatabeseListeners(user: User, cryptoList: List<Crypto>) {
+        firestroeService.listenForUpdate(user, object : RealTimeDataListener<User>{
+
+            override fun onDataChange(updatedData: User) {
+                this@TraderActivity.user = updatedData
+                loadUserCrypto()
+            }
+
+            override fun onError(exception: Exception) {
+                showGeneralServerErrorMessage()
+            }
+
+        })
+
+        firestroeService.listenForUpdates(cryptoList, object : RealTimeDataListener<Crypto> {
+            override fun onDataChange(updatedData: Crypto) {
+                var pos = 0;
+                for (crypto in cryptosAdapter.cryptoList){
+                    if (crypto.name.equals(updatedData.name)) {
+                        crypto.available = updatedData.available
+                        cryptosAdapter.notifyItemChanged(pos)
+                        pos ++
+                    }
+                }
+            }
+
+            override fun onError(exception: Exception) {
+                showGeneralServerErrorMessage()
+            }
+
+        })
+
+    }
+
     private fun loadUserCrypto() {
         runOnUiThread {
-            if (user != null && user!!.cryptoList != null) {
+            if (user != null && user!!.cryptosList != null) {
                 infoPanel.removeAllViews()
-                for (crypto in user!!.cryptoList!!) {
+                for (crypto in user!!.cryptosList!!) {
                     addUserCryptoInfoRow(crypto)
                 }
             }
@@ -135,17 +181,27 @@ class TraderActivity : AppCompatActivity(), CryptosAdapterListener {
     }
 
     override fun onBuyCryptoClicked(crypto: Crypto) {
+        var flag = false
         if (crypto.available > 0) {
-            for (userCrypto in user!!.cryptoList!!) {
+            for (userCrypto in user!!.cryptosList!!) {
                 if (userCrypto.name == crypto.name) {
                     userCrypto.available += 1
+                    flag = true
                     break
                 }
-
-                crypto.available--
-                firestroeService.updateUser(user!!, null)
-                firestroeService.updateCrypto(crypto)
             }
+            if(!flag){
+                val cryptoUser = Crypto()
+                cryptoUser.name = crypto.name
+                cryptoUser.available = 1
+                cryptoUser.imageUrl = crypto.imageUrl
+                user!!.cryptosList!!.toMutableList().add(cryptoUser)
+            }
+
+            crypto.available--
+
+            firestroeService.updateUser(user!!, null)
+            firestroeService.updateCrypto(crypto)
         }
     }
 }
